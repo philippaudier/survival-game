@@ -12,11 +12,12 @@ public class FieldOfView : MonoBehaviour
     public float Z_FOV_Angle;
     public LayerMask Z_TargetMask;
     public LayerMask Z_ViewBlockerMask;
-    public AudioClip[] spottedSoundAlert;
+    public AudioClip[] Z_AlertSound;
     public bool soundPlayed = false;
+    public bool alertSoundPlayed = false;
     [HideInInspector]
     public GameObject P_PlayerReference;
-    private AudioSource audioSource;
+    private AudioSource audioSource1;
     [HideInInspector]
     public Vector3 Z_DirectionToTarget;
     [HideInInspector]
@@ -33,7 +34,7 @@ public class FieldOfView : MonoBehaviour
         P_PlayerReference = GameObject.FindGameObjectWithTag("Player");
         StartCoroutine(FOVRoutine());
         Z_TargetLastLocation = transform.position;
-        audioSource = GetComponent<AudioSource>();
+        audioSource1 = GetComponent<AudioSource>();
 
     }
 
@@ -69,9 +70,9 @@ public class FieldOfView : MonoBehaviour
                 {
                     zombieCanSeePlayer = true;
                     Z_TargetLastLocation = Z_Target.position;
+
                     if (!soundPlayed) {
-                        audioSource.PlayOneShot(spottedSoundAlert[UnityEngine.Random.Range(0, spottedSoundAlert.Length)]);
-                        
+                        audioSource1.PlayOneShot(Z_AlertSound[UnityEngine.Random.Range(0, Z_AlertSound.Length)]);
                         soundPlayed = true;
                     }
                 }
