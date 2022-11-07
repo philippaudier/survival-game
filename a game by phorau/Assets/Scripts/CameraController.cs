@@ -4,14 +4,18 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
-    public Transform target;
-    public Vector3 offset;
-    public float damping;
-    private Vector3 velocity = Vector3.zero;
-    Camera mainCamera;
-    [SerializeField] float scrollSpeed = 0.005f;
-    [SerializeField] float clampZoomMin = 6f;
-    [SerializeField] float clampZoomMax = 20f;
+    Camera C_MainCamera;
+    [Header("Zoom Settings")]
+    [SerializeField] float C_ScrollSpeed = 0.005f;
+    [SerializeField] float C_MinClamp = 6f;
+    [SerializeField] float C_MaxClamp = 20f;
+    [SerializeField] Transform C_Target;
+    [SerializeField] Vector3 C_Offset;
+    [SerializeField] float C_Damping;
+    private Vector3 C_Velocity = Vector3.zero;
+    [SerializeField] float C_ZoomStartAt = 6f;
+    [SerializeField] float C_ZoomSmoothCoeff = 1f;
+    [SerializeField] float C_CurrentDistance;
 
     InputActions playerInput;
 
@@ -32,14 +36,18 @@ public class CameraController : MonoBehaviour
         playerInput.Disable();
 
     }
+    
     private void Start() 
     {
-        mainCamera = Camera.main;
+        C_MainCamera = Camera.main;
+        C_CurrentDistance = Mathf.Clamp(C_ZoomStartAt > C_MinClamp ? C_MinClamp : C_ZoomStartAt, C_MinClamp, C_MaxClamp);
 
     }
+
     private void Update() {
         CameraZoom();
     }
+
     void FixedUpdate()
     {
         FollowPlayer();
@@ -48,15 +56,15 @@ public class CameraController : MonoBehaviour
 
     private void FollowPlayer()
     {
-        Vector3 move_position = target.position + offset;
-        transform.position = Vector3.SmoothDamp(transform.position, move_position, ref velocity, damping);
+        Vector3 move_position = C_Target.position + C_Offset;
+        transform.position = Vector3.SmoothDamp(transform.position, move_position, ref C_Velocity, C_Damping);
     }
 
     private void CameraZoom()
     {
-        float scroll = playerInput.Player.CameraZoom.ReadValue<float>();
-        mainCamera.orthographicSize -= scroll * scrollSpeed * Time.deltaTime;
-        mainCamera.orthographicSize = Mathf.Clamp(mainCamera.orthographicSize, clampZoomMin, clampZoomMax);
+        C_CurrentDistance -= playerInput.Player.CameraZoom.ReadValue<float>() * C_ScrollSpeed;
+        C_CurrentDistance = Mathf.Clamp(C_CurrentDistance, C_MinClamp, C_MaxClamp);
+        C_MainCamera.orthographicSize = Mathf.Lerp(C_MainCamera.orthographicSize, C_CurrentDistance, C_ZoomSmoothCoeff * Time.deltaTime);
         
     }
 }

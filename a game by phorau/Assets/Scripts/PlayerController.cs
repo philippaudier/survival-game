@@ -5,60 +5,46 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
-
-    #region serialized fields
-	    [SerializeField] LayerMask groundMask;
-        [SerializeField] float initialSpeed = 0f;
-	    [SerializeField] float walkSpeed = 2.5f;
-        [SerializeField] float runSpeed = 5f;
-	    [SerializeField] float turnSpeed = 1000f;
-    #endregion
-
-    #region private variables
-	    InputActions playerInput;
-	    Rigidbody playerRigidbody;
-	    Vector3 input;
-	    Vector2 moveDirection;
-	    Camera mainCamera;
-	    bool isAiming = false;
-        bool isRunning = false;
-    #endregion
+    Camera C_MainCamera;
+    [Header("Character Settings")]
+    [SerializeField] float P_WalkSpeed = 2f;
+    [SerializeField] float P_RunSpeed = 3f;
+    [SerializeField] float P_TurnSpeed = 1000f;
+    public GameVariables GV;
+    [SerializeField] LayerMask groundMask;
+    InputActions playerInput;
+    private Rigidbody P_RB;
+    Vector3 P_Inputs;
     
-
     private void Awake()
     {
         playerInput = new InputActions();
-
     }
 
     private void OnEnable()
     {
         playerInput.Enable();
-
     }
 
     private void OnDisable()
     {
         playerInput.Disable();
-
     }
 
     private void Start()
     {
-        mainCamera = Camera.main;
-        playerRigidbody = GetComponent<Rigidbody>();
+        P_RB = GetComponent<Rigidbody>();
+        C_MainCamera = Camera.main;
+        GV = GetComponent<GameVariables>();
     }
 
     private void Update()
     {
-        GetInput();
-        CheckAiming();
-        if (!isAiming) {
-            Look();
-        } else {
-            Aim();
-        }
-        Run();
+        GetMovementDirection();
+        SetBoolIsAiming();
+        SetBoolIsRunning();
+        SetLookDirection();
+        
     }
 
     private void FixedUpdate()
@@ -66,50 +52,46 @@ public class PlayerController : MonoBehaviour
         Move();
     }
 
-    private void GetInput()
+    private void GetMovementDirection()
     {
-        moveDirection = playerInput.Player.Move.ReadValue<Vector2>();
-        input = new Vector3(moveDirection.x, 0, moveDirection.y);
-
+        Vector2 moveDirection = playerInput.Player.Move.ReadValue<Vector2>();
+        P_Inputs = new Vector3(moveDirection.x, 0, moveDirection.y);
     }
 
     private void Move()
     {
-        playerRigidbody.MovePosition(transform.position + input.ToIso() * input.normalized.magnitude * initialSpeed * Time.deltaTime);
+        if (GV.isCharacterRunning)
+            P_RB.MovePosition
+            (transform.position + P_Inputs.ToIso().normalized * P_RunSpeed * Time.deltaTime);
+        else
+            P_RB.MovePosition
+            (transform.position + P_Inputs.ToIso().normalized * P_WalkSpeed * Time.deltaTime);
     }
+
     private void Look()
     {
-    if (input == Vector3.zero) return;
+    if (P_Inputs == Vector3.zero) return;
 
-    Quaternion rotation = Quaternion.LookRotation(input.ToIso(), Vector3.up);
-    transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, turnSpeed * Time.deltaTime);
+    Quaternion rotation = Quaternion.LookRotation(P_Inputs.ToIso(), Vector3.up);
+    transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, P_TurnSpeed * Time.deltaTime);
     }
 
-    private void Run() {
-        if (playerInput.Player.Run.IsPressed() && !isAiming)
-        {
-            isRunning = true;
-            initialSpeed = runSpeed;
-        }
+    private void SetBoolIsRunning() {
+        if (playerInput.Player.Run.IsPressed() && !GV.isCharacterAiming)
+            GV.isCharacterRunning = true;
         else
-        {
-            isRunning = false;
-            initialSpeed = walkSpeed;
-        }
+            GV.isCharacterRunning = false;
     }
 
-    private void CheckAiming()
+    private void SetBoolIsAiming()
     {
-        if (playerInput.Player.Aim.IsPressed()) {
-            isAiming = true;
-        }
-        else {
-            isAiming = false;
-        }
-        
+        if (playerInput.Player.Aim.IsPressed())
+            GV.isCharacterAiming = true;
+        else
+            GV.isCharacterAiming = false;
     }
 
-    private void Aim()
+    private void SetLookDirection()
     {
         var (success, position) = GetMousePosition();
         if (success)
@@ -119,19 +101,28 @@ public class PlayerController : MonoBehaviour
 
             // Ignore the height difference.
             direction.y = 0;
-
-            // Quaternion for a smooth rotation towards the pointer
-            Quaternion rotation = Quaternion.LookRotation(direction, Vector3.up);
+            if (GV.isCharacterAiming)
+            {
+                // Quaternion for a smooth rotation towards the pointer
+                Quaternion rotation = Quaternion.LookRotation(direction, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, P_TurnSpeed * Time.deltaTime);
+            }
+            else
+            {
+                if (P_Inputs == Vector3.zero) return;
+                Quaternion rotation = Quaternion.LookRotation(P_Inputs.ToIso(), Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, P_TurnSpeed * Time.deltaTime);
+            }
 
             // Make the transform look in the direction.
             // transform.forward = direction;
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, turnSpeed * Time.deltaTime);
+            
         }
     }
 
     private (bool success, Vector3 position) GetMousePosition()
     {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        Ray ray = C_MainCamera.ScreenPointToRay(Input.mousePosition);
 
         if (Physics.Raycast(ray, out RaycastHit hitInfo, Mathf.Infinity, groundMask))
         {
